@@ -46,6 +46,18 @@ export function Booking() {
 
   const fetchConfig = async () => {
     setLoading(true);
+    
+    // Define standard defaults
+    const defaults: any = {};
+    FACILITIES.forEach(f => {
+      defaults[f.id] = {
+        basePrice: f.id === 'f1' ? 1600 : (f.id === 'f2' ? 500 : 800),
+        isOfferEnabled: false,
+        offerTitle: "",
+        offerDesc: ""
+      };
+    });
+
     try {
       const { data, error } = await supabase
         .from('turf_config')
@@ -53,8 +65,8 @@ export function Booking() {
 
       if (error) throw error;
 
-      if (data) {
-        const configMap: any = {};
+      if (data && data.length > 0) {
+        const configMap: any = { ...defaults };
         data.forEach((item: any) => {
           configMap[item.id] = {
             basePrice: item.base_price,
@@ -64,12 +76,18 @@ export function Booking() {
           };
         });
         setConfig(configMap);
+      } else {
+        setConfig(defaults);
       }
     } catch (err: any) {
       console.error('Error fetching config from Supabase:', err);
-      // Fallback to local storage
+      // Fallback to local storage if available
       const local = localStorage.getItem('turf_config_v2');
-      if (local) setConfig(JSON.parse(local));
+      if (local) {
+        setConfig(JSON.parse(local));
+      } else {
+        setConfig(defaults);
+      }
     } finally {
       setLoading(false);
     }

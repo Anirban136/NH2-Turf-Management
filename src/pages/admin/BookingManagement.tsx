@@ -3,10 +3,10 @@ import { Search, Filter, Check, X, CreditCard } from 'lucide-react';
 
 export function BookingManagement() {
   const [bookings, setBookings] = useState([
-    { id: 'B-101', user: 'Rahul Sharma', facility: 'Football Turf', time: '2026-04-23 18:00', status: 'pending', payment: 'Partial' },
-    { id: 'B-102', user: 'Amit Kumar', facility: 'Pickleball 1', time: '2026-04-23 19:30', status: 'approved', payment: 'Paid' },
-    { id: 'B-103', user: 'Sneha Gupta', facility: 'Cricket Net', time: '2026-04-24 07:00', status: 'approved', payment: 'Unpaid' },
-    { id: 'B-104', user: 'Vikram Singh', facility: 'Football Turf', time: '2026-04-24 20:00', status: 'rejected', payment: 'Refunded' },
+    { id: 'B-101', user: 'Rahul Sharma', facility: 'Football Turf', time: '2026-04-23 18:00', status: 'pending', totalPrice: 1600, advancePaid: 500, payment: 'Partial' },
+    { id: 'B-102', user: 'Amit Kumar', facility: 'Pickleball 1', time: '2026-04-23 19:30', status: 'approved', totalPrice: 800, advancePaid: 800, payment: 'Paid' },
+    { id: 'B-103', user: 'Sneha Gupta', facility: 'Cricket Net', time: '2026-04-24 07:00', status: 'approved', totalPrice: 600, advancePaid: 500, payment: 'Partial' },
+    { id: 'B-104', user: 'Vikram Singh', facility: 'Football Turf', time: '2026-04-24 20:00', status: 'rejected', totalPrice: 1600, advancePaid: 500, payment: 'Refunded' },
   ]);
 
   const handleAction = (id: string, action: string) => {
@@ -14,7 +14,7 @@ export function BookingManagement() {
       if (b.id === id) {
         if (action === 'approve') return { ...b, status: 'approved' };
         if (action === 'reject') return { ...b, status: 'rejected' };
-        if (action === 'paid') return { ...b, payment: 'Paid' };
+        if (action === 'paid') return { ...b, payment: 'Paid', advancePaid: b.totalPrice };
       }
       return b;
     }));
@@ -32,7 +32,7 @@ export function BookingManagement() {
   const getPaymentBadge = (status: string) => {
     switch (status) {
       case 'Paid': return <span className="text-accent-green" style={{ fontWeight: 600 }}>Paid</span>;
-      case 'Partial': return <span className="text-status-pending" style={{ fontWeight: 600, color: 'var(--status-pending)' }}>Partial (₹500)</span>;
+      case 'Partial': return <span className="text-status-pending" style={{ fontWeight: 600, color: 'var(--status-pending)' }}>Partial</span>;
       case 'Unpaid': return <span className="text-status-error" style={{ fontWeight: 600, color: 'var(--status-error)' }}>Unpaid</span>;
       default: return <span className="text-secondary">{status}</span>;
     }
@@ -64,7 +64,8 @@ export function BookingManagement() {
               <th>Facility</th>
               <th>Date & Time</th>
               <th>Status</th>
-              <th>Payment</th>
+              <th>Advance</th>
+              <th>Remaining</th>
               <th className="text-right">Actions</th>
             </tr>
           </thead>
@@ -76,7 +77,10 @@ export function BookingManagement() {
                 <td>{b.facility}</td>
                 <td>{b.time}</td>
                 <td>{getStatusBadge(b.status)}</td>
-                <td>{getPaymentBadge(b.payment)}</td>
+                <td style={{ fontWeight: 600, color: 'var(--accent-green)' }}>₹{b.advancePaid}</td>
+                <td style={{ fontWeight: 600, color: b.totalPrice - b.advancePaid > 0 ? 'var(--status-error)' : 'var(--accent-green)' }}>
+                  ₹{b.totalPrice - b.advancePaid}
+                </td>
                 <td className="text-right">
                   <div className="flex justify-end gap-2">
                     {b.status === 'pending' && (
@@ -93,12 +97,24 @@ export function BookingManagement() {
                         ><X size={16} /></button>
                       </>
                     )}
-                    {b.payment !== 'Paid' && (
+                    {b.status === 'approved' && b.totalPrice - b.advancePaid > 0 && (
                        <button 
                        onClick={() => handleAction(b.id, 'paid')}
-                       style={{ padding: '0.5rem', backgroundColor: 'rgba(52, 152, 219, 0.1)', color: 'var(--accent-blue)', borderRadius: 'var(--border-radius)' }}
-                       title="Mark Paid"
-                     ><CreditCard size={16} /></button>
+                       style={{ 
+                         padding: '0.4rem 0.8rem', 
+                         backgroundColor: 'var(--accent-green)', 
+                         color: '#000', 
+                         borderRadius: 'var(--border-radius)',
+                         fontSize: '0.875rem',
+                         fontWeight: 600,
+                         display: 'flex',
+                         alignItems: 'center',
+                         gap: '0.4rem'
+                       }}
+                       title="Mark Full Payment"
+                     >
+                       <CreditCard size={16} /> Paid
+                     </button>
                     )}
                   </div>
                 </td>
