@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Trophy, Star, Play } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 /**
  * HERO VIDEO CONFIGURATION
@@ -12,11 +13,31 @@ export function Home() {
   const [config, setConfig] = useState<any>(null);
 
   useEffect(() => {
-    const savedConfig = localStorage.getItem('turf_config_v2');
-    if (savedConfig) {
-      setConfig(JSON.parse(savedConfig));
-    }
+    fetchConfig();
   }, []);
+
+  const fetchConfig = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('turf_config')
+        .select('*');
+
+      if (error) throw error;
+
+      if (data) {
+        const configMap: any = {};
+        data.forEach((item: any) => {
+          configMap[item.id] = { basePrice: item.base_price };
+        });
+        setConfig(configMap);
+      }
+    } catch (err: any) {
+      console.error('Error fetching Home pricing:', err);
+      // Fallback
+      const local = localStorage.getItem('turf_config_v2');
+      if (local) setConfig(JSON.parse(local));
+    }
+  };
 
   const getPrice = (id: string, defaultPrice: number) => {
     return config?.[id]?.basePrice || defaultPrice;

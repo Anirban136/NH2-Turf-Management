@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar as CalendarIcon, Clock, Tag, Info } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Tag, RefreshCw } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 const FACILITIES = [
   { id: 'f1', name: 'Football / Cricket Turf' },
@@ -37,13 +38,42 @@ export function Booking() {
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState('f1');
   const [config, setConfig] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedConfig = localStorage.getItem('turf_config_v2');
-    if (savedConfig) {
-      setConfig(JSON.parse(savedConfig));
-    }
+    fetchConfig();
   }, []);
+
+  const fetchConfig = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('turf_config')
+        .select('*');
+
+      if (error) throw error;
+
+      if (data) {
+        const configMap: any = {};
+        data.forEach((item: any) => {
+          configMap[item.id] = {
+            basePrice: item.base_price,
+            isOfferEnabled: item.is_offer_enabled,
+            offerTitle: item.offer_title,
+            offerDesc: item.offer_desc
+          };
+        });
+        setConfig(configMap);
+      }
+    } catch (err: any) {
+      console.error('Error fetching config from Supabase:', err);
+      // Fallback to local storage
+      const local = localStorage.getItem('turf_config_v2');
+      if (local) setConfig(JSON.parse(local));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const currentFacilityConfig = config?.[selectedId] || { basePrice: 1600, isOfferEnabled: false };
 
@@ -64,7 +94,7 @@ export function Booking() {
     const pricePerSlot = currentFacilityConfig.basePrice / 2;
     let total = numSlots * pricePerSlot;
 
-    // Special logic for "Buy 1h, Get 30m Free" if title contains that string
+    // Special logic for "Buy 1h, Get 30m Free"
     const isBonusTimeOffer = currentFacilityConfig.offerTitle?.toLowerCase().includes('30m free') || currentFacilityConfig.offerTitle?.toLowerCase().includes('30 min free');
     
     if (currentFacilityConfig.isOfferEnabled && isBonusTimeOffer && numSlots >= 3) {
@@ -85,6 +115,14 @@ export function Booking() {
       default: return {};
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="animate-spin text-accent-green" size={40} />
+      </div>
+    );
+  }
 
   return (
     <div className="container" style={{ padding: '2rem 1rem' }}>
@@ -145,7 +183,6 @@ export function Booking() {
               <span>₹{currentFacilityConfig.basePrice}</span>
             </div>
             
-            {/* Special display for the 30m free offer if active */}
             {currentFacilityConfig.isOfferEnabled && selectedSlots.length >= 3 && currentFacilityConfig.offerTitle?.toLowerCase().includes('30m free') && (
               <div className="flex justify-between mb-2 text-accent-green">
                 <span>Bonus Time Discount</span>

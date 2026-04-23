@@ -1,16 +1,42 @@
-# React + Vite
+# NH2 Turf Management Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A premium sports facility management and booking platform.
 
-Currently, two official plugins are available:
+## 🚀 Features
+- **Cinematic UI**: Splash screen animations and hero video backgrounds.
+- **Booking Engine**: Multi-slot selection with dynamic price calculation.
+- **Offers & Promotions**: Admin-controlled selective offers per facility.
+- **Admin Dashboard**: Secure PIN-protected management of bookings, expenses, and settings.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Tech Stack
+- **Frontend**: React + Vite + TypeScript
+- **Styling**: Vanilla CSS (Premium Custom Design)
+- **Database**: Supabase
+- **Icons**: Lucide React
 
-## React Compiler
+## 📦 Setup & Installation
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Local Environment
+1. Clone the repository.
+2. Run `npm install`.
+3. Create a `.env.local` file in the root directory.
+4. Add your Supabase credentials:
+   ```env
+   VITE_SUPABASE_URL=your_project_url
+   VITE_SUPABASE_ANON_KEY=your_anon_key
+   ```
 
-## Expanding the ESLint configuration
+### 2. Supabase Configuration
+1. Go to your [Supabase Dashboard](https://supabase.com/dashboard).
+2. Create a new project.
+3. Open the **SQL Editor**.
+4. Copy and paste the contents of `supabase/migrations/schema.sql` and run it to create your tables.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 3. Run Locally
+```bash
+npm run dev
+```
+
+## 🔐 Admin Access
+- **Default Access**: `/admin`
+- **Default PIN**: `1234`

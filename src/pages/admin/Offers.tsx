@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Save, CheckCircle, Info, ChevronRight } from 'lucide-react';
+import { Tag, Save, CheckCircle, Info, ChevronRight, RefreshCw, AlertTriangle } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 const FACILITIES = [
   { id: 'f1', name: 'Football / Cricket Turf', type: 'Turf' },
@@ -11,37 +12,90 @@ const FACILITIES = [
 export function Offers() {
   const [facilitiesConfig, setFacilitiesConfig] = useState<any>({});
   const [selectedId, setSelectedId] = useState(FACILITIES[0].id);
+  const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedConfig = localStorage.getItem('turf_config_v2');
-    if (savedConfig) {
-      setFacilitiesConfig(JSON.parse(savedConfig));
-    } else {
-      // Default config
-      const initial: any = {};
-      FACILITIES.forEach(f => {
-        initial[f.id] = {
-          basePrice: f.id === 'f1' ? 1600 : (f.id === 'f2' ? 500 : 800),
-          isOfferEnabled: false,
-          offerTitle: "Special Discount",
-          offerDesc: "Get 10% off this week!"
-        };
-      });
-      setFacilitiesConfig(initial);
-    }
+    fetchConfig();
   }, []);
 
-  const handleSave = () => {
-    localStorage.setItem('turf_config_v2', JSON.stringify(facilitiesConfig));
-    // Backwards compatibility for the booking page (using the old key for football)
-    localStorage.setItem('turf_config', JSON.stringify({
-      basePrice: facilitiesConfig['f1'].basePrice,
-      isBonusTimeEnabled: facilitiesConfig['f1'].isOfferEnabled
-    }));
+  const fetchConfig = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('turf_config')
+        .select('*');
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const configMap: any = {};
+        data.forEach((item: any) => {
+          configMap[item.id] = {
+            basePrice: item.base_price,
+            isOfferEnabled: item.is_offer_enabled,
+            offerTitle: item.offer_title,
+            offerDesc: item.offer_desc
+          };
+        });
+        setFacilitiesConfig(configMap);
+      } else {
+        // Fallback to local defaults if DB is empty
+        initializeDefaults();
+      }
+    } catch (err: any) {
+      console.error('Error fetching config:', err);
+      setError('Could not connect to Supabase. Using local settings.');
+      initializeDefaults();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializeDefaults = () => {
+    const initial: any = {};
+    FACILITIES.forEach(f => {
+      initial[f.id] = {
+        basePrice: f.id === 'f1' ? 1600 : (f.id === 'f2' ? 500 : 800),
+        isOfferEnabled: false,
+        offerTitle: "Special Discount",
+        offerDesc: "Get 10% off this week!"
+      };
+    });
+    setFacilitiesConfig(initial);
+  };
+
+  const handleSave = async () => {
+    setSaved(false);
+    setError(null);
     
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      const updates = Object.keys(facilitiesConfig).map(id => ({
+        id,
+        name: FACILITIES.find(f => f.id === id)?.name || 'Facility',
+        base_price: facilitiesConfig[id].basePrice,
+        is_offer_enabled: facilitiesConfig[id].isOfferEnabled,
+        offer_title: facilitiesConfig[id].offerTitle,
+        offer_desc: facilitiesConfig[id].offerDesc,
+        updated_at: new Date().toISOString()
+      }));
+
+      const { error } = await supabase
+        .from('turf_config')
+        .upsert(updates);
+
+      if (error) throw error;
+
+      // Also update local storage for redundancy
+      localStorage.setItem('turf_config_v2', JSON.stringify(facilitiesConfig));
+      
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      console.error('Error saving config:', err);
+      setError('Failed to save to cloud. Check if you have run the SQL migration.');
+    }
   };
 
   const currentConfig = facilitiesConfig[selectedId] || {};
@@ -53,21 +107,37 @@ export function Offers() {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="animate-spin text-accent-green" size={40} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Offers & Pricing</h1>
-          <p className="text-secondary">Configure selective offers for different courts and facilities.</p>
+          <p className="text-secondary">Cloud-synced pricing for selective courts and facilities.</p>
         </div>
-        <button 
-          onClick={handleSave} 
-          className="btn btn-primary flex items-center gap-2"
-          style={{ padding: '0.75rem 2rem' }}
-        >
-          {saved ? <CheckCircle size={20} /> : <Save size={20} />}
-          {saved ? 'Settings Saved' : 'Save All Changes'}
-        </button>
+        <div className="flex gap-4">
+          {error && (
+            <div className="flex items-center gap-2 text-status-error px-4" style={{ fontSize: '0.875rem' }}>
+              <AlertTriangle size={18} />
+              <span>{error}</span>
+            </div>
+          )}
+          <button 
+            onClick={handleSave} 
+            className="btn btn-primary flex items-center gap-2"
+            style={{ padding: '0.75rem 2rem' }}
+          >
+            {saved ? <CheckCircle size={20} /> : <Save size={20} />}
+            {saved ? 'Cloud Updated' : 'Save to Supabase'}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-12 gap-8">
@@ -118,7 +188,7 @@ export function Offers() {
                     />
                   </div>
                   <p className="text-muted text-xs">
-                    * This price will be used as the base for all duration calculations.
+                    * Changes will be reflected instantly for all users.
                   </p>
                 </div>
               </div>
