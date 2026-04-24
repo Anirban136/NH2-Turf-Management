@@ -39,5 +39,5 @@ ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;
 
 -- Simple public access policy (for dev, you should restrict this later)
 CREATE POLICY "Public Read Access" ON public.turf_config FOR SELECT USING (true);
-CREATE POLICY "Public Read Access" ON public.bookings FOR SELECT USING (true);
-CREATE POLICY "Public Read Access" ON public.expenses FOR SELECT USING (true);
+CREATE POLICY "Public Read Access" ON public.bookings FOR ALL USING (true);
+CREATE POLICY "Public Read Access" ON public.expenses FOR ALL USING (true);

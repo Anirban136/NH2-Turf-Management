@@ -11,9 +11,14 @@ const HERO_VIDEO_URL = "/hero-video.mp4";
 
 export function Home() {
   const [config, setConfig] = useState<any>(null);
+  const [liveStatus, setLiveStatus] = useState<any>({});
 
   useEffect(() => {
     fetchConfig();
+    fetchLiveStatus();
+    // Refresh status every minute
+    const interval = setInterval(fetchLiveStatus, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchConfig = async () => {
@@ -39,9 +44,47 @@ export function Home() {
     }
   };
 
+  const fetchLiveStatus = async () => {
+    try {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const currentTime = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('facility_id, start_time, end_time')
+        .eq('date', today);
+
+      if (bookings) {
+        const status: any = {
+          'f1': 'FREE',
+          'f2': 'FREE',
+          'p1': 'FREE',
+          'p2': 'FREE'
+        };
+
+        bookings.forEach((b: any) => {
+          if (currentTime >= b.start_time && currentTime < b.end_time) {
+            status[b.facility_id] = 'BOOKED';
+          }
+        });
+        setLiveStatus(status);
+      }
+    } catch (err) {
+      console.error('Error fetching live status:', err);
+    }
+  };
+
   const getPrice = (id: string, defaultPrice: number) => {
     return config?.[id]?.basePrice || defaultPrice;
   };
+
+  const facilities = [
+    { id: 'f1', title: 'Football Turf', icon: '⚽', price: `₹${getPrice('f1', 1600)}/hr`, img: 'https://images.unsplash.com/photo-1518605368461-1e1e111e1f57?auto=format&fit=crop&q=80&w=800' },
+    { id: 'f2', title: 'Cricket Net Practice', icon: '🏏', price: `₹${getPrice('f2', 500)}/hr`, img: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&q=80&w=800' },
+    { id: 'p1', title: 'Pickleball Court 1', icon: '🎾', price: `₹${getPrice('p1', 800)}/hr`, img: 'https://images.unsplash.com/photo-1616168593309-844fb25cbb12?auto=format&fit=crop&q=80&w=800' },
+    { id: 'p2', title: 'Pickleball Court 2', icon: '🎾', price: `₹${getPrice('p2', 800)}/hr`, img: 'https://images.unsplash.com/photo-1616168593309-844fb25cbb12?auto=format&fit=crop&q=80&w=800' }
+  ];
 
   return (
     <div>
@@ -95,6 +138,46 @@ export function Home() {
           <Link to="/book" className="btn btn-primary" style={{ fontSize: '1.25rem', padding: '1rem 2.5rem', boxShadow: '0 10px 30px rgba(0, 255, 136, 0.3)' }}>
             Book Your Slot <ArrowRight size={24} />
           </Link>
+        </div>
+      </section>
+
+      {/* Live Availability Section */}
+      <section style={{ backgroundColor: '#0a0a0a', padding: '3rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="container">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4rem', flexWrap: 'wrap' }}>
+            {facilities.map((f) => (
+              <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ 
+                  width: '56px', 
+                  height: '56px', 
+                  borderRadius: '50%', 
+                  backgroundColor: 'rgba(255,255,255,0.03)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: '1.5rem',
+                  border: '1px solid rgba(255,255,255,0.05)'
+                }}>
+                  {f.icon}
+                </div>
+                <div>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>{f.title}</h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ 
+                      width: '8px', 
+                      height: '8px', 
+                      borderRadius: '50%', 
+                      backgroundColor: liveStatus[f.id] === 'BOOKED' ? '#ff4d4d' : 'var(--accent-green)',
+                      boxShadow: `0 0 10px ${liveStatus[f.id] === 'BOOKED' ? '#ff4d4d' : 'var(--accent-green)'}`
+                    }}></div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.05em', color: liveStatus[f.id] === 'BOOKED' ? '#ff4d4d' : 'var(--accent-green)' }}>
+                      {liveStatus[f.id] || 'FREE'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -158,18 +241,14 @@ export function Home() {
             <h2 style={{ fontSize: '3rem', marginBottom: '1rem' }}>Our World-Class Facilities</h2>
             <p className="text-secondary" style={{ fontSize: '1.25rem' }}>Choose your sport and start playing.</p>
           </div>
-          <div className="grid grid-cols-3 gap-8">
-            {[
-              { id: 'f1', title: 'Football / Cricket Turf', price: `₹${getPrice('f1', 1600)}/hr`, img: 'https://images.unsplash.com/photo-1518605368461-1e1e111e1f57?auto=format&fit=crop&q=80&w=800' },
-              { id: 'f2', title: 'Cricket Net Practice', price: `₹${getPrice('f2', 500)}/hr`, img: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&q=80&w=800' },
-              { id: 'p1', title: 'Pickleball Court', price: `₹${getPrice('p1', 800)}/hr`, img: 'https://images.unsplash.com/photo-1616168593309-844fb25cbb12?auto=format&fit=crop&q=80&w=800' }
-            ].map((facility, i) => (
+          <div className="grid grid-cols-4 gap-8">
+            {facilities.map((facility, i) => (
               <div key={i} className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', transform: 'translateY(0)', transition: '0.3s' }} onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-10px)')} onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}>
                 <img src={facility.img} alt={facility.title} style={{ width: '100%', height: '240px', objectFit: 'cover' }} />
-                <div style={{ padding: '2rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{facility.title}</h3>
-                  <p className="text-accent-green" style={{ fontWeight: 700, fontSize: '1.25rem', marginBottom: '2rem' }}>{facility.price}</p>
-                  <Link to="/book" className="btn btn-secondary text-center" style={{ marginTop: 'auto', width: '100%', padding: '1rem' }}>
+                <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{facility.title}</h3>
+                  <p className="text-accent-green" style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '1.5rem' }}>{facility.price}</p>
+                  <Link to="/book" className="btn btn-secondary text-center" style={{ marginTop: 'auto', width: '100%', padding: '0.75rem' }}>
                     Select Slot
                   </Link>
                 </div>
